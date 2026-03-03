@@ -2,5 +2,7 @@ export enum Role {
   ANNONCEUR = 'annonceur',
   ACHETEUR = 'acheteur',
   ADMIN = 'admin',
-  ORGANISATION = 'organisation'
+  ORGANISATION = 'organisation',
+  AGC = 'agc',
+  AGC_SUB = 'agc_sub',
 }

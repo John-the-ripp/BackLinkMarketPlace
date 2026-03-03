@@ -6,34 +6,30 @@ import {
   CreateDateColumn,
   UpdateDateColumn,
 } from 'typeorm';
-import { Role } from '../../common/enums/role.enum.js';
+import { User } from '../../users/entities/user.entity.js';
 
-@Entity('users')
-export class User {
+@Entity('agc_clients')
+export class AgcClient {
   @PrimaryGeneratedColumn()
   id: number;
-
-  @Column({ unique: true })
-  email: string;
-
-  @Column()
-  password: string;
 
   @Column()
   name: string;
 
-  @Column({ type: 'enum', enum: Role, default: Role.ANNONCEUR })
-  role: Role;
+  @Column({ nullable: true })
+  contactEmail: string;
 
   @Column({ type: 'decimal', precision: 12, scale: 2, default: 0 })
   wallet: number;
 
-  // Lien vers l'AGC parent (pour les sous-utilisateurs AGC_SUB)
-  @ManyToOne(() => User, { nullable: true })
+  @ManyToOne(() => User)
   agc: User;
 
-  @Column({ nullable: true })
+  @Column()
   agcId: number;
+
+  @Column({ default: true })
+  isActive: boolean;
 
   @CreateDateColumn()
   createdAt: Date;

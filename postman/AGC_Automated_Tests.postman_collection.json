@@ -1,0 +1,1215 @@
+{
+  "info": {
+    "name": "WINAITYBACKLINKS - AGC Automated Tests",
+    "_postman_id": "agc-automated-tests-001",
+    "description": "Collection automatisée pour tester tous les endpoints AGC du marketplace. Exécuter via Collection Runner dans l'ordre.",
+    "schema": "https://schema.getpostman.com/json/collection/v2.1.0/collection.json"
+  },
+  "variable": [
+    { "key": "baseUrl", "value": "http://localhost:3000" },
+    { "key": "agcToken", "value": "" },
+    { "key": "agcId", "value": "" },
+    { "key": "clientId", "value": "" },
+    { "key": "clientId2", "value": "" },
+    { "key": "subUserToken", "value": "" },
+    { "key": "subUserId", "value": "" },
+    { "key": "subUserEmail", "value": "" },
+    { "key": "annonceurToken", "value": "" },
+    { "key": "annonceurId", "value": "" },
+    { "key": "acheteurToken", "value": "" },
+    { "key": "acheteurId", "value": "" },
+    { "key": "backlinkId", "value": "" }
+  ],
+  "item": [
+    {
+      "name": "00 - Setup",
+      "item": [
+        {
+          "name": "00.1 Register Annonceur (seller)",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "pm.test('Status 201 - Annonceur registered', function () {",
+                  "    pm.response.to.have.status(201);",
+                  "});",
+                  "",
+                  "pm.test('Response has access_token and user', function () {",
+                  "    var json = pm.response.json();",
+                  "    pm.expect(json).to.have.property('access_token');",
+                  "    pm.expect(json.user).to.have.property('id');",
+                  "    pm.expect(json.user.role).to.eql('annonceur');",
+                  "    pm.collectionVariables.set('annonceurToken', json.access_token);",
+                  "    pm.collectionVariables.set('annonceurId', json.user.id);",
+                  "});"
+                ],
+                "type": "text/javascript"
+              }
+            }
+          ],
+          "request": {
+            "method": "POST",
+            "header": [{ "key": "Content-Type", "value": "application/json" }],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"name\": \"Vendeur Test\",\n  \"email\": \"vendeur_{{$timestamp}}@test.com\",\n  \"password\": \"password123\",\n  \"role\": \"annonceur\"\n}"
+            },
+            "url": { "raw": "{{baseUrl}}/auth/register", "host": ["{{baseUrl}}"], "path": ["auth", "register"] }
+          }
+        },
+        {
+          "name": "00.2 Create Backlink (for later purchase)",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "pm.test('Status 201 - Backlink created', function () {",
+                  "    pm.response.to.have.status(201);",
+                  "});",
+                  "",
+                  "pm.test('Backlink has correct fields', function () {",
+                  "    var json = pm.response.json();",
+                  "    pm.expect(json).to.have.property('id');",
+                  "    pm.expect(json.status).to.eql('available');",
+                  "    pm.collectionVariables.set('backlinkId', json.id);",
+                  "});"
+                ],
+                "type": "text/javascript"
+              }
+            }
+          ],
+          "request": {
+            "method": "POST",
+            "header": [
+              { "key": "Content-Type", "value": "application/json" },
+              { "key": "Authorization", "value": "Bearer {{annonceurToken}}" }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"url\": \"https://example-{{$timestamp}}.com/backlink\",\n  \"anchorText\": \"best tech blog\",\n  \"targetUrl\": \"https://target-site.com/page1\",\n  \"price\": 25.00\n}"
+            },
+            "url": { "raw": "{{baseUrl}}/backlinks", "host": ["{{baseUrl}}"], "path": ["backlinks"] }
+          }
+        }
+      ]
+    },
+    {
+      "name": "01 - AGC Registration",
+      "item": [
+        {
+          "name": "01.1 Register AGC",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "pm.test('Status 201 - AGC registered', function () {",
+                  "    pm.response.to.have.status(201);",
+                  "});",
+                  "",
+                  "pm.test('User role is agc', function () {",
+                  "    var json = pm.response.json();",
+                  "    pm.expect(json.user.role).to.eql('agc');",
+                  "});",
+                  "",
+                  "pm.test('Has access_token', function () {",
+                  "    var json = pm.response.json();",
+                  "    pm.expect(json).to.have.property('access_token');",
+                  "    pm.expect(json.access_token).to.be.a('string').and.not.empty;",
+                  "    pm.collectionVariables.set('agcToken', json.access_token);",
+                  "    pm.collectionVariables.set('agcId', json.user.id);",
+                  "});",
+                  "",
+                  "pm.test('Wallet is 0 for AGC', function () {",
+                  "    var json = pm.response.json();",
+                  "    pm.expect(Number(json.user.wallet)).to.eql(0);",
+                  "});"
+                ],
+                "type": "text/javascript"
+              }
+            }
+          ],
+          "request": {
+            "method": "POST",
+            "header": [{ "key": "Content-Type", "value": "application/json" }],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"name\": \"Agence Test Auto\",\n  \"email\": \"agc_{{$timestamp}}@test.com\",\n  \"password\": \"password123\",\n  \"role\": \"agc\"\n}"
+            },
+            "url": { "raw": "{{baseUrl}}/auth/register", "host": ["{{baseUrl}}"], "path": ["auth", "register"] }
+          }
+        },
+        {
+          "name": "01.2 AGC cannot register as agc_sub",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "pm.test('Status 400 - agc_sub not allowed at registration', function () {",
+                  "    pm.response.to.have.status(400);",
+                  "});"
+                ],
+                "type": "text/javascript"
+              }
+            }
+          ],
+          "request": {
+            "method": "POST",
+            "header": [{ "key": "Content-Type", "value": "application/json" }],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"name\": \"Fake Sub\",\n  \"email\": \"fakesub_{{$timestamp}}@test.com\",\n  \"password\": \"password123\",\n  \"role\": \"agc_sub\"\n}"
+            },
+            "url": { "raw": "{{baseUrl}}/auth/register", "host": ["{{baseUrl}}"], "path": ["auth", "register"] }
+          }
+        }
+      ]
+    },
+    {
+      "name": "02 - Client Management",
+      "item": [
+        {
+          "name": "02.1 Create Client A",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "pm.test('Status 201 - Client created', function () {",
+                  "    pm.response.to.have.status(201);",
+                  "});",
+                  "",
+                  "pm.test('Client has correct fields', function () {",
+                  "    var json = pm.response.json();",
+                  "    pm.expect(json).to.have.property('id');",
+                  "    pm.expect(json.name).to.eql('Client Alpha');",
+                  "    pm.expect(json.isActive).to.be.true;",
+                  "    pm.expect(Number(json.wallet)).to.eql(0);",
+                  "    pm.collectionVariables.set('clientId', json.id);",
+                  "});"
+                ],
+                "type": "text/javascript"
+              }
+            }
+          ],
+          "request": {
+            "method": "POST",
+            "header": [
+              { "key": "Content-Type", "value": "application/json" },
+              { "key": "Authorization", "value": "Bearer {{agcToken}}" }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"name\": \"Client Alpha\",\n  \"contactEmail\": \"alpha@client.com\"\n}"
+            },
+            "url": { "raw": "{{baseUrl}}/agc/clients", "host": ["{{baseUrl}}"], "path": ["agc", "clients"] }
+          }
+        },
+        {
+          "name": "02.2 Create Client B",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "pm.test('Status 201 - Client B created', function () {",
+                  "    pm.response.to.have.status(201);",
+                  "});",
+                  "",
+                  "pm.test('Client B saved', function () {",
+                  "    var json = pm.response.json();",
+                  "    pm.expect(json.name).to.eql('Client Beta');",
+                  "    pm.collectionVariables.set('clientId2', json.id);",
+                  "});"
+                ],
+                "type": "text/javascript"
+              }
+            }
+          ],
+          "request": {
+            "method": "POST",
+            "header": [
+              { "key": "Content-Type", "value": "application/json" },
+              { "key": "Authorization", "value": "Bearer {{agcToken}}" }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"name\": \"Client Beta\",\n  \"contactEmail\": \"beta@client.com\",\n  \"initialWallet\": 100\n}"
+            },
+            "url": { "raw": "{{baseUrl}}/agc/clients", "host": ["{{baseUrl}}"], "path": ["agc", "clients"] }
+          }
+        },
+        {
+          "name": "02.3 List all clients",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "pm.test('Status 200', function () {",
+                  "    pm.response.to.have.status(200);",
+                  "});",
+                  "",
+                  "pm.test('Returns array with at least 2 clients', function () {",
+                  "    var json = pm.response.json();",
+                  "    pm.expect(json).to.be.an('array');",
+                  "    pm.expect(json.length).to.be.at.least(2);",
+                  "});"
+                ],
+                "type": "text/javascript"
+              }
+            }
+          ],
+          "request": {
+            "method": "GET",
+            "header": [{ "key": "Authorization", "value": "Bearer {{agcToken}}" }],
+            "url": { "raw": "{{baseUrl}}/agc/clients", "host": ["{{baseUrl}}"], "path": ["agc", "clients"] }
+          }
+        },
+        {
+          "name": "02.4 Get Client A details",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "pm.test('Status 200', function () {",
+                  "    pm.response.to.have.status(200);",
+                  "});",
+                  "",
+                  "pm.test('Client details correct', function () {",
+                  "    var json = pm.response.json();",
+                  "    pm.expect(json.name).to.eql('Client Alpha');",
+                  "    pm.expect(json).to.have.property('wallet');",
+                  "    pm.expect(json).to.have.property('isActive');",
+                  "});"
+                ],
+                "type": "text/javascript"
+              }
+            }
+          ],
+          "request": {
+            "method": "GET",
+            "header": [{ "key": "Authorization", "value": "Bearer {{agcToken}}" }],
+            "url": { "raw": "{{baseUrl}}/agc/clients/{{clientId}}", "host": ["{{baseUrl}}"], "path": ["agc", "clients", "{{clientId}}"] }
+          }
+        },
+        {
+          "name": "02.5 Update Client A",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "pm.test('Status 200 - Client updated', function () {",
+                  "    pm.response.to.have.status(200);",
+                  "});",
+                  "",
+                  "pm.test('Name updated', function () {",
+                  "    var json = pm.response.json();",
+                  "    pm.expect(json.name).to.eql('Client Alpha Updated');",
+                  "});"
+                ],
+                "type": "text/javascript"
+              }
+            }
+          ],
+          "request": {
+            "method": "PUT",
+            "header": [
+              { "key": "Content-Type", "value": "application/json" },
+              { "key": "Authorization", "value": "Bearer {{agcToken}}" }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"name\": \"Client Alpha Updated\"\n}"
+            },
+            "url": { "raw": "{{baseUrl}}/agc/clients/{{clientId}}", "host": ["{{baseUrl}}"], "path": ["agc", "clients", "{{clientId}}"] }
+          }
+        }
+      ]
+    },
+    {
+      "name": "03 - Fund Client Wallet",
+      "item": [
+        {
+          "name": "03.1 Fund Client A wallet",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "pm.test('Status 201 - Wallet funded', function () {",
+                  "    pm.response.to.have.status(201);",
+                  "});",
+                  "",
+                  "pm.test('Wallet balance updated', function () {",
+                  "    var json = pm.response.json();",
+                  "    pm.expect(Number(json.wallet)).to.be.at.least(500);",
+                  "});"
+                ],
+                "type": "text/javascript"
+              }
+            }
+          ],
+          "request": {
+            "method": "POST",
+            "header": [
+              { "key": "Content-Type", "value": "application/json" },
+              { "key": "Authorization", "value": "Bearer {{agcToken}}" }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"amount\": 500\n}"
+            },
+            "url": { "raw": "{{baseUrl}}/agc/clients/{{clientId}}/fund", "host": ["{{baseUrl}}"], "path": ["agc", "clients", "{{clientId}}", "fund"] }
+          }
+        },
+        {
+          "name": "03.2 Fund with invalid amount (0)",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "pm.test('Status 400 - Invalid amount rejected', function () {",
+                  "    pm.response.to.have.status(400);",
+                  "});"
+                ],
+                "type": "text/javascript"
+              }
+            }
+          ],
+          "request": {
+            "method": "POST",
+            "header": [
+              { "key": "Content-Type", "value": "application/json" },
+              { "key": "Authorization", "value": "Bearer {{agcToken}}" }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"amount\": 0\n}"
+            },
+            "url": { "raw": "{{baseUrl}}/agc/clients/{{clientId}}/fund", "host": ["{{baseUrl}}"], "path": ["agc", "clients", "{{clientId}}", "fund"] }
+          }
+        }
+      ]
+    },
+    {
+      "name": "04 - Sub-User Management",
+      "item": [
+        {
+          "name": "04.1 Create Sub-User",
+          "event": [
+            {
+              "listen": "prerequest",
+              "script": {
+                "exec": [
+                  "var email = 'sub_' + Date.now() + '@test.com';",
+                  "pm.collectionVariables.set('subUserEmail', email);"
+                ],
+                "type": "text/javascript"
+              }
+            },
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "pm.test('Status 201 - Sub-user created', function () {",
+                  "    pm.response.to.have.status(201);",
+                  "});",
+                  "",
+                  "pm.test('Sub-user has correct role and agcId', function () {",
+                  "    var json = pm.response.json();",
+                  "    pm.expect(json.role).to.eql('agc_sub');",
+                  "    pm.expect(json).to.have.property('id');",
+                  "    pm.expect(json.agcId).to.eql(Number(pm.collectionVariables.get('agcId')));",
+                  "    pm.collectionVariables.set('subUserId', json.id);",
+                  "});"
+                ],
+                "type": "text/javascript"
+              }
+            }
+          ],
+          "request": {
+            "method": "POST",
+            "header": [
+              { "key": "Content-Type", "value": "application/json" },
+              { "key": "Authorization", "value": "Bearer {{agcToken}}" }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"name\": \"Sub User Test\",\n  \"email\": \"{{subUserEmail}}\",\n  \"password\": \"password123\"\n}"
+            },
+            "url": { "raw": "{{baseUrl}}/agc/sub-users", "host": ["{{baseUrl}}"], "path": ["agc", "sub-users"] }
+          }
+        },
+        {
+          "name": "04.2 Login as Sub-User",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "pm.test('Status 201 - Sub-user logged in', function () {",
+                  "    pm.response.to.have.status(201);",
+                  "});",
+                  "",
+                  "pm.test('Token received', function () {",
+                  "    var json = pm.response.json();",
+                  "    pm.expect(json).to.have.property('access_token');",
+                  "    pm.expect(json.user.role).to.eql('agc_sub');",
+                  "    pm.collectionVariables.set('subUserToken', json.access_token);",
+                  "});"
+                ],
+                "type": "text/javascript"
+              }
+            }
+          ],
+          "request": {
+            "method": "POST",
+            "header": [{ "key": "Content-Type", "value": "application/json" }],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"email\": \"{{subUserEmail}}\",\n  \"password\": \"password123\"\n}"
+            },
+            "url": { "raw": "{{baseUrl}}/auth/login", "host": ["{{baseUrl}}"], "path": ["auth", "login"] }
+          }
+        },
+        {
+          "name": "04.3 List Sub-Users",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "pm.test('Status 200', function () {",
+                  "    pm.response.to.have.status(200);",
+                  "});",
+                  "",
+                  "pm.test('Returns array with at least 1 sub-user', function () {",
+                  "    var json = pm.response.json();",
+                  "    pm.expect(json).to.be.an('array');",
+                  "    pm.expect(json.length).to.be.at.least(1);",
+                  "    pm.expect(json[0].role).to.eql('agc_sub');",
+                  "});"
+                ],
+                "type": "text/javascript"
+              }
+            }
+          ],
+          "request": {
+            "method": "GET",
+            "header": [{ "key": "Authorization", "value": "Bearer {{agcToken}}" }],
+            "url": { "raw": "{{baseUrl}}/agc/sub-users", "host": ["{{baseUrl}}"], "path": ["agc", "sub-users"] }
+          }
+        }
+      ]
+    },
+    {
+      "name": "05 - Permission Management",
+      "item": [
+        {
+          "name": "05.1 Assign Sub-User to Client A (VIEW + BUY)",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "pm.test('Status 201 - Access assigned', function () {",
+                  "    pm.response.to.have.status(201);",
+                  "});",
+                  "",
+                  "pm.test('Permissions correct', function () {",
+                  "    var json = pm.response.json();",
+                  "    pm.expect(json.permissions).to.include('view');",
+                  "    pm.expect(json.permissions).to.include('buy');",
+                  "    pm.expect(json.userId).to.eql(Number(pm.collectionVariables.get('subUserId')));",
+                  "});"
+                ],
+                "type": "text/javascript"
+              }
+            }
+          ],
+          "request": {
+            "method": "POST",
+            "header": [
+              { "key": "Content-Type", "value": "application/json" },
+              { "key": "Authorization", "value": "Bearer {{agcToken}}" }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"userId\": {{subUserId}},\n  \"permissions\": [\"view\", \"buy\"]\n}"
+            },
+            "url": { "raw": "{{baseUrl}}/agc/clients/{{clientId}}/access", "host": ["{{baseUrl}}"], "path": ["agc", "clients", "{{clientId}}", "access"] }
+          }
+        },
+        {
+          "name": "05.2 Get Client A access list",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "pm.test('Status 200', function () {",
+                  "    pm.response.to.have.status(200);",
+                  "});",
+                  "",
+                  "pm.test('Access list has entries', function () {",
+                  "    var json = pm.response.json();",
+                  "    pm.expect(json).to.be.an('array');",
+                  "    pm.expect(json.length).to.be.at.least(1);",
+                  "});"
+                ],
+                "type": "text/javascript"
+              }
+            }
+          ],
+          "request": {
+            "method": "GET",
+            "header": [{ "key": "Authorization", "value": "Bearer {{agcToken}}" }],
+            "url": { "raw": "{{baseUrl}}/agc/clients/{{clientId}}/access", "host": ["{{baseUrl}}"], "path": ["agc", "clients", "{{clientId}}", "access"] }
+          }
+        },
+        {
+          "name": "05.3 Update permissions (add MANAGE)",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "pm.test('Status 200 - Permissions updated', function () {",
+                  "    pm.response.to.have.status(200);",
+                  "});",
+                  "",
+                  "pm.test('Permissions include MANAGE', function () {",
+                  "    var json = pm.response.json();",
+                  "    pm.expect(json.permissions).to.include('manage');",
+                  "    pm.expect(json.permissions).to.include('view');",
+                  "    pm.expect(json.permissions).to.include('buy');",
+                  "});"
+                ],
+                "type": "text/javascript"
+              }
+            }
+          ],
+          "request": {
+            "method": "PUT",
+            "header": [
+              { "key": "Content-Type", "value": "application/json" },
+              { "key": "Authorization", "value": "Bearer {{agcToken}}" }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"permissions\": [\"VIEW\", \"BUY\", \"MANAGE\"]\n}"
+            },
+            "url": { "raw": "{{baseUrl}}/agc/clients/{{clientId}}/access/{{subUserId}}", "host": ["{{baseUrl}}"], "path": ["agc", "clients", "{{clientId}}", "access", "{{subUserId}}"] }
+          }
+        }
+      ]
+    },
+    {
+      "name": "06 - Sub-User sees accessible clients",
+      "item": [
+        {
+          "name": "06.1 Sub-User lists clients (only accessible ones)",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "pm.test('Status 200', function () {",
+                  "    pm.response.to.have.status(200);",
+                  "});",
+                  "",
+                  "pm.test('Sub-user sees only assigned clients', function () {",
+                  "    var json = pm.response.json();",
+                  "    pm.expect(json).to.be.an('array');",
+                  "    pm.expect(json.length).to.eql(1);",
+                  "    pm.expect(json[0].id).to.eql(Number(pm.collectionVariables.get('clientId')));",
+                  "});"
+                ],
+                "type": "text/javascript"
+              }
+            }
+          ],
+          "request": {
+            "method": "GET",
+            "header": [{ "key": "Authorization", "value": "Bearer {{subUserToken}}" }],
+            "url": { "raw": "{{baseUrl}}/agc/clients", "host": ["{{baseUrl}}"], "path": ["agc", "clients"] }
+          }
+        },
+        {
+          "name": "06.2 Sub-User cannot access Client B",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "pm.test('Status 403 - Access denied to Client B', function () {",
+                  "    var status = pm.response.code;",
+                  "    pm.expect([403, 404]).to.include(status);",
+                  "});"
+                ],
+                "type": "text/javascript"
+              }
+            }
+          ],
+          "request": {
+            "method": "GET",
+            "header": [{ "key": "Authorization", "value": "Bearer {{subUserToken}}" }],
+            "url": { "raw": "{{baseUrl}}/agc/clients/{{clientId2}}", "host": ["{{baseUrl}}"], "path": ["agc", "clients", "{{clientId2}}"] }
+          }
+        }
+      ]
+    },
+    {
+      "name": "07 - Purchase Flow (AGC)",
+      "item": [
+        {
+          "name": "07.1 AGC buys backlink for Client A",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "pm.test('Status 200 - Purchase successful', function () {",
+                  "    pm.response.to.have.status(200);",
+                  "});",
+                  "",
+                  "pm.test('Backlink is now sold', function () {",
+                  "    var json = pm.response.json();",
+                  "    pm.expect(json.status).to.eql('sold');",
+                  "    pm.expect(json.buyerId).to.be.a('number');",
+                  "    pm.expect(json.clientId).to.eql(Number(pm.collectionVariables.get('clientId')));",
+                  "});"
+                ],
+                "type": "text/javascript"
+              }
+            }
+          ],
+          "request": {
+            "method": "POST",
+            "header": [
+              { "key": "Content-Type", "value": "application/json" },
+              { "key": "Authorization", "value": "Bearer {{agcToken}}" }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"clientId\": {{clientId}}\n}"
+            },
+            "url": { "raw": "{{baseUrl}}/backlinks/{{backlinkId}}/buy", "host": ["{{baseUrl}}"], "path": ["backlinks", "{{backlinkId}}", "buy"] }
+          }
+        },
+        {
+          "name": "07.2 Verify Client A wallet debited",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "pm.test('Status 200', function () {",
+                  "    pm.response.to.have.status(200);",
+                  "});",
+                  "",
+                  "pm.test('Client wallet decreased (was 500, paid 25)', function () {",
+                  "    var json = pm.response.json();",
+                  "    pm.expect(Number(json.wallet)).to.eql(475);",
+                  "});"
+                ],
+                "type": "text/javascript"
+              }
+            }
+          ],
+          "request": {
+            "method": "GET",
+            "header": [{ "key": "Authorization", "value": "Bearer {{agcToken}}" }],
+            "url": { "raw": "{{baseUrl}}/agc/clients/{{clientId}}", "host": ["{{baseUrl}}"], "path": ["agc", "clients", "{{clientId}}"] }
+          }
+        },
+        {
+          "name": "07.3 AGC buy without clientId fails",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "pm.test('Status 400 - AGC must provide clientId', function () {",
+                  "    pm.response.to.have.status(400);",
+                  "});"
+                ],
+                "type": "text/javascript"
+              }
+            }
+          ],
+          "request": {
+            "method": "POST",
+            "header": [
+              { "key": "Content-Type", "value": "application/json" },
+              { "key": "Authorization", "value": "Bearer {{agcToken}}" }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{}"
+            },
+            "url": { "raw": "{{baseUrl}}/backlinks/{{backlinkId}}/buy", "host": ["{{baseUrl}}"], "path": ["backlinks", "{{backlinkId}}", "buy"] }
+          }
+        }
+      ]
+    },
+    {
+      "name": "08 - Purchase Flow (Sub-User)",
+      "item": [
+        {
+          "name": "08.0 Create another backlink for sub-user test",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "pm.test('Status 201', function () {",
+                  "    pm.response.to.have.status(201);",
+                  "});",
+                  "",
+                  "pm.test('Save backlink ID', function () {",
+                  "    var json = pm.response.json();",
+                  "    pm.collectionVariables.set('backlinkId', json.id);",
+                  "});"
+                ],
+                "type": "text/javascript"
+              }
+            }
+          ],
+          "request": {
+            "method": "POST",
+            "header": [
+              { "key": "Content-Type", "value": "application/json" },
+              { "key": "Authorization", "value": "Bearer {{annonceurToken}}" }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"url\": \"https://sub-test-{{$timestamp}}.com/link\",\n  \"anchorText\": \"marketing agency\",\n  \"targetUrl\": \"https://target-site.com/page2\",\n  \"price\": 30.00\n}"
+            },
+            "url": { "raw": "{{baseUrl}}/backlinks", "host": ["{{baseUrl}}"], "path": ["backlinks"] }
+          }
+        },
+        {
+          "name": "08.1 Sub-User buys backlink for Client A",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "pm.test('Status 200 - Sub-user purchase successful', function () {",
+                  "    pm.response.to.have.status(200);",
+                  "});",
+                  "",
+                  "pm.test('Backlink assigned to client', function () {",
+                  "    var json = pm.response.json();",
+                  "    pm.expect(json.status).to.eql('sold');",
+                  "    pm.expect(json.clientId).to.eql(Number(pm.collectionVariables.get('clientId')));",
+                  "});"
+                ],
+                "type": "text/javascript"
+              }
+            }
+          ],
+          "request": {
+            "method": "POST",
+            "header": [
+              { "key": "Content-Type", "value": "application/json" },
+              { "key": "Authorization", "value": "Bearer {{subUserToken}}" }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"clientId\": {{clientId}}\n}"
+            },
+            "url": { "raw": "{{baseUrl}}/backlinks/{{backlinkId}}/buy", "host": ["{{baseUrl}}"], "path": ["backlinks", "{{backlinkId}}", "buy"] }
+          }
+        },
+        {
+          "name": "08.2 Sub-User cannot buy for Client B (no access)",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "pm.test('Status 403 - No BUY permission for Client B', function () {",
+                  "    pm.response.to.have.status(403);",
+                  "});"
+                ],
+                "type": "text/javascript"
+              }
+            }
+          ],
+          "request": {
+            "method": "POST",
+            "header": [
+              { "key": "Content-Type", "value": "application/json" },
+              { "key": "Authorization", "value": "Bearer {{subUserToken}}" }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"clientId\": {{clientId2}}\n}"
+            },
+            "url": { "raw": "{{baseUrl}}/backlinks/{{backlinkId}}/buy", "host": ["{{baseUrl}}"], "path": ["backlinks", "{{backlinkId}}", "buy"] }
+          }
+        }
+      ]
+    },
+    {
+      "name": "09 - Dashboard",
+      "item": [
+        {
+          "name": "09.1 AGC Dashboard",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "pm.test('Status 200', function () {",
+                  "    pm.response.to.have.status(200);",
+                  "});",
+                  "",
+                  "pm.test('Dashboard has correct structure', function () {",
+                  "    var json = pm.response.json();",
+                  "    pm.expect(json).to.have.property('totalClients');",
+                  "    pm.expect(json).to.have.property('totalWallet');",
+                  "    pm.expect(json).to.have.property('totalPurchases');",
+                  "    pm.expect(json).to.have.property('clients');",
+                  "    pm.expect(json.clients).to.be.an('array');",
+                  "});",
+                  "",
+                  "pm.test('Dashboard reflects purchases', function () {",
+                  "    var json = pm.response.json();",
+                  "    pm.expect(json.totalPurchases).to.be.at.least(1);",
+                  "    pm.expect(json.totalClients).to.be.at.least(2);",
+                  "});"
+                ],
+                "type": "text/javascript"
+              }
+            }
+          ],
+          "request": {
+            "method": "GET",
+            "header": [{ "key": "Authorization", "value": "Bearer {{agcToken}}" }],
+            "url": { "raw": "{{baseUrl}}/agc/dashboard", "host": ["{{baseUrl}}"], "path": ["agc", "dashboard"] }
+          }
+        },
+        {
+          "name": "09.2 Client A purchases",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "pm.test('Status 200', function () {",
+                  "    pm.response.to.have.status(200);",
+                  "});",
+                  "",
+                  "pm.test('Has purchases for Client A', function () {",
+                  "    var json = pm.response.json();",
+                  "    pm.expect(json).to.be.an('array');",
+                  "    pm.expect(json.length).to.be.at.least(1);",
+                  "});"
+                ],
+                "type": "text/javascript"
+              }
+            }
+          ],
+          "request": {
+            "method": "GET",
+            "header": [{ "key": "Authorization", "value": "Bearer {{agcToken}}" }],
+            "url": { "raw": "{{baseUrl}}/agc/clients/{{clientId}}/purchases", "host": ["{{baseUrl}}"], "path": ["agc", "clients", "{{clientId}}", "purchases"] }
+          }
+        }
+      ]
+    },
+    {
+      "name": "10 - Profile (AGC & Sub-User)",
+      "item": [
+        {
+          "name": "10.1 AGC profile",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "pm.test('Status 200', function () {",
+                  "    pm.response.to.have.status(200);",
+                  "});",
+                  "",
+                  "pm.test('Profile has AGC role', function () {",
+                  "    var json = pm.response.json();",
+                  "    pm.expect(json.role).to.eql('agc');",
+                  "    pm.expect(json).to.have.property('name');",
+                  "    pm.expect(json).to.have.property('email');",
+                  "});"
+                ],
+                "type": "text/javascript"
+              }
+            }
+          ],
+          "request": {
+            "method": "GET",
+            "header": [{ "key": "Authorization", "value": "Bearer {{agcToken}}" }],
+            "url": { "raw": "{{baseUrl}}/users/profile", "host": ["{{baseUrl}}"], "path": ["users", "profile"] }
+          }
+        },
+        {
+          "name": "10.2 Sub-User profile",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "pm.test('Status 200', function () {",
+                  "    pm.response.to.have.status(200);",
+                  "});",
+                  "",
+                  "pm.test('Profile has agc_sub role', function () {",
+                  "    var json = pm.response.json();",
+                  "    pm.expect(json.role).to.eql('agc_sub');",
+                  "});"
+                ],
+                "type": "text/javascript"
+              }
+            }
+          ],
+          "request": {
+            "method": "GET",
+            "header": [{ "key": "Authorization", "value": "Bearer {{subUserToken}}" }],
+            "url": { "raw": "{{baseUrl}}/users/profile", "host": ["{{baseUrl}}"], "path": ["users", "profile"] }
+          }
+        }
+      ]
+    },
+    {
+      "name": "11 - Marketplace Access (AGC)",
+      "item": [
+        {
+          "name": "11.1 AGC can browse marketplace",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "pm.test('Status 200', function () {",
+                  "    pm.response.to.have.status(200);",
+                  "});",
+                  "",
+                  "pm.test('Returns array of backlinks', function () {",
+                  "    var json = pm.response.json();",
+                  "    pm.expect(json).to.be.an('array');",
+                  "});"
+                ],
+                "type": "text/javascript"
+              }
+            }
+          ],
+          "request": {
+            "method": "GET",
+            "header": [{ "key": "Authorization", "value": "Bearer {{agcToken}}" }],
+            "url": { "raw": "{{baseUrl}}/backlinks/marketplace", "host": ["{{baseUrl}}"], "path": ["backlinks", "marketplace"] }
+          }
+        },
+        {
+          "name": "11.2 Sub-User can browse marketplace",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "pm.test('Status 200', function () {",
+                  "    pm.response.to.have.status(200);",
+                  "});",
+                  "",
+                  "pm.test('Returns array', function () {",
+                  "    var json = pm.response.json();",
+                  "    pm.expect(json).to.be.an('array');",
+                  "});"
+                ],
+                "type": "text/javascript"
+              }
+            }
+          ],
+          "request": {
+            "method": "GET",
+            "header": [{ "key": "Authorization", "value": "Bearer {{subUserToken}}" }],
+            "url": { "raw": "{{baseUrl}}/backlinks/marketplace", "host": ["{{baseUrl}}"], "path": ["backlinks", "marketplace"] }
+          }
+        }
+      ]
+    },
+    {
+      "name": "12 - Security Tests",
+      "item": [
+        {
+          "name": "12.1 Acheteur cannot access AGC endpoints",
+          "event": [
+            {
+              "listen": "prerequest",
+              "script": {
+                "exec": [
+                  "// Register an acheteur if not yet done",
+                  "if (!pm.collectionVariables.get('acheteurToken')) {",
+                  "    pm.sendRequest({",
+                  "        url: pm.collectionVariables.get('baseUrl') + '/auth/register',",
+                  "        method: 'POST',",
+                  "        header: { 'Content-Type': 'application/json' },",
+                  "        body: { mode: 'raw', raw: JSON.stringify({",
+                  "            name: 'Acheteur Test',",
+                  "            email: 'acheteur_' + Date.now() + '@test.com',",
+                  "            password: 'password123',",
+                  "            role: 'acheteur'",
+                  "        })}",
+                  "    }, function (err, res) {",
+                  "        var json = res.json();",
+                  "        pm.collectionVariables.set('acheteurToken', json.access_token);",
+                  "        pm.collectionVariables.set('acheteurId', json.user.id);",
+                  "    });",
+                  "}"
+                ],
+                "type": "text/javascript"
+              }
+            },
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "pm.test('Status 403 - Acheteur forbidden from AGC endpoints', function () {",
+                  "    pm.response.to.have.status(403);",
+                  "});"
+                ],
+                "type": "text/javascript"
+              }
+            }
+          ],
+          "request": {
+            "method": "GET",
+            "header": [{ "key": "Authorization", "value": "Bearer {{acheteurToken}}" }],
+            "url": { "raw": "{{baseUrl}}/agc/clients", "host": ["{{baseUrl}}"], "path": ["agc", "clients"] }
+          }
+        },
+        {
+          "name": "12.2 No token = 401",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "pm.test('Status 401 - Unauthorized without token', function () {",
+                  "    pm.response.to.have.status(401);",
+                  "});"
+                ],
+                "type": "text/javascript"
+              }
+            }
+          ],
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": { "raw": "{{baseUrl}}/agc/clients", "host": ["{{baseUrl}}"], "path": ["agc", "clients"] }
+          }
+        },
+        {
+          "name": "12.3 Annonceur cannot access AGC endpoints",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "pm.test('Status 403 - Annonceur forbidden from AGC', function () {",
+                  "    pm.response.to.have.status(403);",
+                  "});"
+                ],
+                "type": "text/javascript"
+              }
+            }
+          ],
+          "request": {
+            "method": "GET",
+            "header": [{ "key": "Authorization", "value": "Bearer {{annonceurToken}}" }],
+            "url": { "raw": "{{baseUrl}}/agc/clients", "host": ["{{baseUrl}}"], "path": ["agc", "clients"] }
+          }
+        }
+      ]
+    },
+    {
+      "name": "13 - Cleanup",
+      "item": [
+        {
+          "name": "13.1 Revoke Sub-User access",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "pm.test('Status 200 - Access revoked', function () {",
+                  "    pm.response.to.have.status(200);",
+                  "});"
+                ],
+                "type": "text/javascript"
+              }
+            }
+          ],
+          "request": {
+            "method": "DELETE",
+            "header": [{ "key": "Authorization", "value": "Bearer {{agcToken}}" }],
+            "url": { "raw": "{{baseUrl}}/agc/clients/{{clientId}}/access/{{subUserId}}", "host": ["{{baseUrl}}"], "path": ["agc", "clients", "{{clientId}}", "access", "{{subUserId}}"] }
+          }
+        },
+        {
+          "name": "13.2 Deactivate Client B",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "pm.test('Status 200 - Client deactivated', function () {",
+                  "    pm.response.to.have.status(200);",
+                  "});",
+                  "",
+                  "pm.test('Client is inactive', function () {",
+                  "    var json = pm.response.json();",
+                  "    pm.expect(json.isActive).to.be.false;",
+                  "});"
+                ],
+                "type": "text/javascript"
+              }
+            }
+          ],
+          "request": {
+            "method": "DELETE",
+            "header": [{ "key": "Authorization", "value": "Bearer {{agcToken}}" }],
+            "url": { "raw": "{{baseUrl}}/agc/clients/{{clientId2}}", "host": ["{{baseUrl}}"], "path": ["agc", "clients", "{{clientId2}}"] }
+          }
+        },
+        {
+          "name": "13.3 Delete Sub-User",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "pm.test('Status 200 - Sub-user deleted', function () {",
+                  "    pm.response.to.have.status(200);",
+                  "});"
+                ],
+                "type": "text/javascript"
+              }
+            }
+          ],
+          "request": {
+            "method": "DELETE",
+            "header": [{ "key": "Authorization", "value": "Bearer {{agcToken}}" }],
+            "url": { "raw": "{{baseUrl}}/agc/sub-users/{{subUserId}}", "host": ["{{baseUrl}}"], "path": ["agc", "sub-users", "{{subUserId}}"] }
+          }
+        }
+      ]
+    }
+  ]
+}

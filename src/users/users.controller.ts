@@ -15,7 +15,6 @@ import { UpdateUserDto } from './dto/update-user.dto.js';
 
 @Controller('users')
 @UseGuards(AuthGuard('jwt'), RolesGuard)
-@Roles(Role.ANNONCEUR)
 export class UsersController {
   constructor(private usersService: UsersService) {}
 
@@ -26,11 +25,13 @@ export class UsersController {
   }
 
   @Get('profile')
+  @Roles(Role.ANNONCEUR, Role.ACHETEUR, Role.AGC, Role.AGC_SUB)
   getProfile(@Request() req) {
     return this.usersService.getProfile(req.user.id);
   }
 
   @Put('profile')
+  @Roles(Role.ANNONCEUR, Role.ACHETEUR, Role.AGC, Role.AGC_SUB)
   updateProfile(@Body() updateUserDto: UpdateUserDto, @Request() req) {
     return this.usersService.updateProfile(req.user.id, updateUserDto);
   }

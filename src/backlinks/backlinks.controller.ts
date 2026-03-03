@@ -17,6 +17,7 @@ import { Role } from '../common/enums/role.enum.js';
 import { BacklinksService } from './backlinks.service.js';
 import { CreateBacklinkDto } from './dto/create-backlink.dto.js';
 import { UpdateBacklinkDto } from './dto/update-backlink.dto.js';
+import { BuyBacklinkDto } from './dto/buy-backlink.dto.js';
 
 @Controller('backlinks')
 @UseGuards(AuthGuard('jwt'), RolesGuard)
@@ -37,9 +38,9 @@ export class BacklinksController {
     return this.backlinksService.findAll();
   }
 
-  // ── MARKETPLACE : backlinks disponibles (annonceur + acheteur) ──
+  // ── MARKETPLACE : backlinks disponibles ──
   @Get('marketplace')
-  @Roles(Role.ANNONCEUR, Role.ACHETEUR)
+  @Roles(Role.ANNONCEUR, Role.ACHETEUR, Role.AGC, Role.AGC_SUB)
   findAllAvailable() {
     return this.backlinksService.findAllAvailable();
   }
@@ -58,18 +59,22 @@ export class BacklinksController {
     return this.backlinksService.findMyPurchases(req.user.id);
   }
 
-  // ── Détail d'un backlink (annonceur + acheteur) ──
+  // ── Détail d'un backlink ──
   @Get(':id')
-  @Roles(Role.ANNONCEUR, Role.ACHETEUR)
+  @Roles(Role.ANNONCEUR, Role.ACHETEUR, Role.AGC, Role.AGC_SUB)
   findOne(@Param('id', ParseIntPipe) id: number) {
     return this.backlinksService.findOne(id);
   }
 
-  // ── ACHETEUR : acheter un backlink ──
+  // ── Acheter un backlink (ACHETEUR: wallet perso, AGC/AGC_SUB: wallet client) ──
   @Post(':id/buy')
-  @Roles(Role.ACHETEUR)
-  buy(@Param('id', ParseIntPipe) id: number, @Request() req) {
-    return this.backlinksService.buy(id, req.user.id);
+  @Roles(Role.ACHETEUR, Role.AGC, Role.AGC_SUB)
+  buy(
+    @Param('id', ParseIntPipe) id: number,
+    @Body() buyBacklinkDto: BuyBacklinkDto,
+    @Request() req,
+  ) {
+    return this.backlinksService.buy(id, req.user.id, buyBacklinkDto.clientId);
   }
 
   // ── ANNONCEUR : modifier mon backlink ──

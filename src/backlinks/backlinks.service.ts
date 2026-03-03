@@ -8,6 +8,9 @@ import { InjectRepository } from '@nestjs/typeorm';
 import { Repository, DataSource } from 'typeorm';
 import { Backlink, BacklinkStatus } from './entities/backlink.entity.js';
 import { User } from '../users/entities/user.entity.js';
+import { AgcClient } from '../agc/entities/agc-client.entity.js';
+import { AgcService } from '../agc/agc.service.js';
+import { Role } from '../common/enums/role.enum.js';
 import { CreateBacklinkDto } from './dto/create-backlink.dto.js';
 import { UpdateBacklinkDto } from './dto/update-backlink.dto.js';
 
@@ -17,6 +20,7 @@ export class BacklinksService {
     @InjectRepository(Backlink)
     private backlinksRepository: Repository<Backlink>,
     private dataSource: DataSource,
+    private agcService: AgcService,
   ) {}
 
   // ── VENDRE : mettre un backlink en vente ──
@@ -79,7 +83,7 @@ export class BacklinksService {
   }
 
   // ── ACHETER un backlink (avec transaction wallet) ──
-  async buy(id: number, buyerId: number): Promise<Backlink> {
+  async buy(id: number, buyerId: number, clientId?: number): Promise<Backlink> {
     const queryRunner = this.dataSource.createQueryRunner();
     await queryRunner.connect();
     await queryRunner.startTransaction();
@@ -102,7 +106,6 @@ export class BacklinksService {
         throw new BadRequestException('You cannot buy your own backlink');
       }
 
-      // Vérifier le solde de l'acheteur
       const buyer = await queryRunner.manager.findOne(User, {
         where: { id: buyerId },
       });
@@ -113,15 +116,51 @@ export class BacklinksService {
 
       const price = Number(backlink.price);
 
-      if (Number(buyer.wallet) < price) {
-        throw new BadRequestException(
-          `Insufficient wallet balance. Required: ${price}, Available: ${buyer.wallet}`,
-        );
-      }
+      // ── Achat pour un client AGC ──
+      if (clientId) {
+        if (buyer.role !== Role.AGC && buyer.role !== Role.AGC_SUB) {
+          throw new BadRequestException('Only AGC users can specify a clientId');
+        }
 
-      // Débiter l'acheteur
-      buyer.wallet = Number(buyer.wallet) - price;
-      await queryRunner.manager.save(User, buyer);
+        // Valider l'accès au client (permissions)
+        await this.agcService.validateClientPurchase(buyerId, buyer.role, clientId);
+
+        // Re-charger le client dans la transaction
+        const client = await queryRunner.manager.findOne(AgcClient, {
+          where: { id: clientId },
+        });
+
+        if (!client) {
+          throw new NotFoundException(`Client #${clientId} not found`);
+        }
+
+        if (Number(client.wallet) < price) {
+          throw new BadRequestException(
+            `Insufficient client wallet. Required: ${price}, Available: ${client.wallet}`,
+          );
+        }
+
+        // Débiter le wallet du client
+        client.wallet = Number(client.wallet) - price;
+        await queryRunner.manager.save(AgcClient, client);
+
+        backlink.clientId = clientId;
+
+      // ── Achat personnel (ACHETEUR classique) ──
+      } else {
+        if (buyer.role === Role.AGC || buyer.role === Role.AGC_SUB) {
+          throw new BadRequestException('AGC users must specify a clientId when purchasing');
+        }
+
+        if (Number(buyer.wallet) < price) {
+          throw new BadRequestException(
+            `Insufficient wallet balance. Required: ${price}, Available: ${buyer.wallet}`,
+          );
+        }
+
+        buyer.wallet = Number(buyer.wallet) - price;
+        await queryRunner.manager.save(User, buyer);
+      }
 
       // Créditer le vendeur
       const seller = await queryRunner.manager.findOne(User, {

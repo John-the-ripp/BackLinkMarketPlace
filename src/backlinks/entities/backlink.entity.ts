@@ -7,6 +7,7 @@ import {
   UpdateDateColumn,
 } from 'typeorm';
 import { User } from '../../users/entities/user.entity.js';
+import { AgcClient } from '../../agc/entities/agc-client.entity.js';
 
 export enum BacklinkStatus {
   AVAILABLE = 'available',
@@ -46,6 +47,13 @@ export class Backlink {
 
   @Column({ nullable: true })
   buyerId: number;
+
+  // Client AGC pour lequel l'achat a été effectué (null si achat perso)
+  @ManyToOne(() => AgcClient, { nullable: true })
+  client: AgcClient;
+
+  @Column({ nullable: true })
+  clientId: number;
 
   @CreateDateColumn()
   createdAt: Date;

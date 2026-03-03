@@ -14,8 +14,8 @@ export class RegisterDto {
   password: string;
 
   @IsOptional()
-  @IsEnum([Role.ANNONCEUR, Role.ACHETEUR], {
-    message: 'Role must be annonceur or acheteur',
+  @IsEnum([Role.ANNONCEUR, Role.ACHETEUR, Role.AGC], {
+    message: 'Role must be annonceur, acheteur, or agc',
   })
-  role?: Role.ANNONCEUR | Role.ACHETEUR;
+  role?: Role.ANNONCEUR | Role.ACHETEUR | Role.AGC;
 }
