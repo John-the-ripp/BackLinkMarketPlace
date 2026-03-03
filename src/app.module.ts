@@ -1,4 +1,5 @@
 import { Module } from '@nestjs/common';
+import { ConfigModule, ConfigService } from '@nestjs/config';
 import { TypeOrmModule } from '@nestjs/typeorm';
 import { AuthModule } from './auth/auth.module.js';
 import { UsersModule } from './users/users.module.js';
@@ -8,12 +9,16 @@ import { Backlink } from './backlinks/entities/backlink.entity.js';
 
 @Module({
   imports: [
-    TypeOrmModule.forRoot({
-      type: 'postgres',
-      url: process.env.DATABASE_URL || 'postgresql://neondb_owner:npg_KpbkU4Dnyfr0@ep-royal-truth-al41kx4x-pooler.c-3.eu-central-1.aws.neon.tech/neondb?sslmode=require',
-      ssl: true,
-      entities: [User, Backlink],
-      synchronize: true, // Disable in production
+    ConfigModule.forRoot({ isGlobal: true }),
+    TypeOrmModule.forRootAsync({
+      inject: [ConfigService],
+      useFactory: (config: ConfigService) => ({
+        type: 'postgres' as const,
+        url: config.get<string>('DATABASE_URL'),
+        ssl: true,
+        entities: [User, Backlink],
+        synchronize: true, // Disable in production
+      }),
     }),
     AuthModule,
     UsersModule,
